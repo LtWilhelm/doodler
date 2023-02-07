@@ -5,8 +5,9 @@ import { Constants } from "./geometry/constants.ts";
 import { Vector } from "./geometry/vector.ts";
 
 export const init = (opt: IDoodlerOptions) => {
-  window['doodler'] = new Doodler(opt);
-  window['doodler'].init();
+  if (window.doodler) throw 'Doodler has already been initialized in this window'
+  window.doodler = new Doodler(opt);
+  window.doodler.init();
 }
 
 interface IDoodlerOptions {
@@ -35,6 +36,8 @@ export class Doodler {
     return this.ctx.canvas.height;
   }
 
+  private draggables: Draggable[] = [];
+
   constructor({
     width,
     height,
@@ -62,6 +65,17 @@ export class Doodler {
   }
 
   init() {
+    this._canvas.addEventListener('mousedown', e => this.onClick(e));
+    this._canvas.addEventListener('mouseup', e => this.offClick(e));
+    this._canvas.addEventListener('mousemove', e => {
+      const rect = this._canvas.getBoundingClientRect();
+      this.mouseX = e.clientX - rect.left;
+      this.mouseY = e.clientY - rect.top;
+
+      for (const d of this.draggables.filter(d => d.beingDragged)) {
+        d.point.add(e.movementX, e.movementY)
+      }
+    })
     this.startDrawLoop();
   }
 
@@ -73,10 +87,16 @@ export class Doodler {
   private draw() {
     this.ctx.fillStyle = this.bg;
     this.ctx.fillRect(0, 0, this.width, this.height);
+    // for (const d of this.draggables.filter(d => d.beingDragged)) {
+    //   d.point.set(this.mouseX,this.mouseY);
+    // }
     for (const [i, l] of (this.layers || []).entries()) {
       l(this.ctx, i);
     }
+    this.drawUI();
   }
+
+  // Layer management
 
   createLayer(layer: layer) {
     this.layers.push(layer);
@@ -93,6 +113,8 @@ export class Doodler {
 
     this.layers = temp;
   }
+
+  // Drawing
 
   line(start: Vector, end: Vector, style?: IStyle) {
     this.setStyle(style);
@@ -163,7 +185,7 @@ export class Doodler {
     this.ctx.stroke();
   }
 
-  drawRotated(origin: Vector, angle: number, cb: () => void){
+  drawRotated(origin: Vector, angle: number, cb: () => void) {
     this.ctx.save();
     this.ctx.translate(origin.x, origin.y);
     this.ctx.rotate(angle);
@@ -179,6 +201,82 @@ export class Doodler {
 
     ctx.lineWidth = style?.weight || 1;
   }
+
+  // Interaction
+
+  mouseX = 0;
+  mouseY = 0;
+
+
+  registerDraggable(point: Vector, radius: number, style?: IStyle & { shape: 'square' | 'circle' }) {
+    const id = this.addUIElement('circle', point, radius, { fillColor: '#5533ff50', strokeColor: '#5533ff50' })
+    this.draggables.push({ point, radius, style, id });
+  }
+  unregisterDraggable(point: Vector) {
+    for (const d of this.draggables) {
+      if (d.point === point) {
+        this.removeUIElement(d.id);
+      }
+    }
+    this.draggables = this.draggables.filter(d => d.point !== point);
+  }
+
+  onClick(e: MouseEvent) {
+    const rect = this._canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    for (const d of this.draggables) {
+      if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
+        d.beingDragged = true;
+      } else d.beingDragged = false;
+    }
+  }
+
+  offClick(e:MouseEvent){
+    for (const d of this.draggables) {
+      d.beingDragged = false;
+    }
+  }
+
+  // UI Layer
+  uiElements: Map<string, [keyof uiDrawing, ...any]> = new Map();
+  private uiDrawing: uiDrawing = {
+    rectangle: (...args: any[]) => {
+      !args[3].noFill && this.fillRect(args[0], args[1], args[2], args[3])
+      !args[3].noStroke && this.drawRect(args[0], args[1], args[2], args[3])
+    },
+    square: (...args: any[]) => {
+      !args[2].noFill && this.fillSquare(args[0], args[1], args[2])
+      !args[2].noStroke && this.drawSquare(args[0], args[1], args[2])
+    },
+    circle: (...args: any[]) => {
+      !args[2].noFill && this.fillCircle(args[0], args[1], args[2])
+      !args[2].noStroke && this.drawCircle(args[0], args[1], args[2])
+    },
+  }
+
+  private drawUI() {
+    for (const [shape, ...args] of this.uiElements.values()) {
+      this.uiDrawing[shape].apply(null, args as [])
+    }
+  }
+
+  addUIElement(shape: 'rectangle', at: Vector, width: number, height: number, style?: IStyle): string;
+  addUIElement(shape: 'square', at: Vector, size: number, style?: IStyle): string;
+  addUIElement(shape: 'circle', at: Vector, radius: number, style?: IStyle): string;
+  addUIElement(shape: keyof uiDrawing, ...args: any[]) {
+    const id = crypto.randomUUID();
+    for (const arg of args) {
+      delete arg.color;
+    }
+    this.uiElements.set(id, [shape, ...args]);
+    return id;
+  }
+
+  removeUIElement(id: string) {
+    this.uiElements.delete(id);
+  }
 }
 
 interface IStyle {
@@ -186,8 +284,25 @@ interface IStyle {
   fillColor?: string;
   strokeColor?: string;
   weight?: number;
+
+  noStroke?: boolean;
+  noFill?: boolean;
 }
 
 interface IDrawable {
   draw: () => void;
+}
+
+type Draggable = {
+  point: Vector;
+  radius: number;
+  style?: IStyle & { shape: 'square' | 'circle' };
+  beingDragged?: boolean;
+  id: string;
+}
+
+type uiDrawing = {
+  circle: () => void;
+  square: () => void;
+  rectangle: () => void;
 }

@@ -197,7 +197,6 @@ export class Vector {
   }
 
   drawDot() {
-    let doodler = window['doodler'];
     if (!doodler) return;
 
     doodler.dot(this, {weight: 2, color: 'red'});

@@ -5,148 +5,6 @@
 const Constants = {
     TWO_PI: Math.PI * 2
 };
-const init = (opt)=>{
-    window['doodler'] = new Doodler(opt);
-    window['doodler'].init();
-};
-class Doodler {
-    ctx;
-    _canvas;
-    layers = [];
-    bg;
-    framerate;
-    get width() {
-        return this.ctx.canvas.width;
-    }
-    get height() {
-        return this.ctx.canvas.height;
-    }
-    constructor({ width , height , canvas , bg , framerate  }){
-        if (!canvas) {
-            canvas = document.createElement('canvas');
-            document.body.append(canvas);
-        }
-        this.bg = bg || 'white';
-        this.framerate = framerate || 60;
-        canvas.width = width;
-        canvas.height = height;
-        this._canvas = canvas;
-        const ctx = canvas.getContext('2d');
-        console.log(ctx);
-        if (!ctx) throw 'Unable to initialize Doodler: Canvas context not found';
-        this.ctx = ctx;
-    }
-    init() {
-        this.startDrawLoop();
-    }
-    timer;
-    startDrawLoop() {
-        this.timer = setInterval(()=>this.draw(), 1000 / this.framerate);
-    }
-    draw() {
-        this.ctx.fillStyle = this.bg;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        for (const [i, l] of (this.layers || []).entries()){
-            l(this.ctx, i);
-        }
-    }
-    createLayer(layer) {
-        this.layers.push(layer);
-    }
-    deleteLayer(layer) {
-        this.layers = this.layers.filter((l)=>l !== layer);
-    }
-    moveLayer(layer, index) {
-        let temp = this.layers.filter((l)=>l !== layer);
-        temp = [
-            ...temp.slice(0, index),
-            layer,
-            ...temp.slice(index)
-        ];
-        this.layers = temp;
-    }
-    line(start, end, style) {
-        this.setStyle(style);
-        this.ctx.beginPath();
-        this.ctx.moveTo(start.x, start.y);
-        this.ctx.lineTo(end.x, end.y);
-        this.ctx.stroke();
-    }
-    dot(at, style) {
-        this.setStyle({
-            ...style,
-            weight: 1
-        });
-        this.ctx.beginPath();
-        this.ctx.arc(at.x, at.y, style?.weight || 1, 0, Constants.TWO_PI);
-        this.ctx.fill();
-    }
-    drawCircle(at, radius, style) {
-        this.setStyle(style);
-        this.ctx.beginPath();
-        this.ctx.arc(at.x, at.y, radius, 0, Constants.TWO_PI);
-        this.ctx.stroke();
-    }
-    fillCircle(at, radius, style) {
-        this.setStyle(style);
-        this.ctx.beginPath();
-        this.ctx.arc(at.x, at.y, radius, 0, Constants.TWO_PI);
-        this.ctx.fill();
-    }
-    drawRect(at, width, height, style) {
-        this.setStyle(style);
-        this.ctx.strokeRect(at.x, at.y, width, height);
-    }
-    fillRect(at, width, height, style) {
-        this.setStyle(style);
-        this.ctx.fillRect(at.x, at.y, width, height);
-    }
-    drawSquare(at, size, style) {
-        this.drawRect(at, size, size, style);
-    }
-    fillSquare(at, size, style) {
-        this.fillRect(at, size, size, style);
-    }
-    drawCenteredRect(at, width, height, style) {
-        this.ctx.save();
-        this.ctx.translate(-width / 2, -height / 2);
-        this.drawRect(at, width, height, style);
-        this.ctx.restore();
-    }
-    fillCenteredRect(at, width, height, style) {
-        this.ctx.save();
-        this.ctx.translate(-width / 2, -height / 2);
-        this.fillRect(at, width, height, style);
-        this.ctx.restore();
-    }
-    drawCenteredSquare(at, size, style) {
-        this.drawCenteredRect(at, size, size, style);
-    }
-    fillCenteredSquare(at, size, style) {
-        this.fillCenteredRect(at, size, size, style);
-    }
-    drawBezier(a, b, c, d, style) {
-        this.setStyle(style);
-        this.ctx.beginPath();
-        this.ctx.moveTo(a.x, a.y);
-        this.ctx.bezierCurveTo(b.x, b.y, c.x, c.y, d.x, d.y);
-        this.ctx.stroke();
-    }
-    drawRotated(origin, angle, cb) {
-        this.ctx.save();
-        this.ctx.translate(origin.x, origin.y);
-        this.ctx.rotate(angle);
-        this.ctx.translate(-origin.x, -origin.y);
-        cb();
-        this.ctx.restore();
-    }
-    setStyle(style) {
-        const ctx = this.ctx;
-        ctx.fillStyle = style?.color || style?.fillColor || 'black';
-        ctx.strokeStyle = style?.color || style?.strokeColor || 'black';
-        ctx.lineWidth = style?.weight || 1;
-    }
-}
 class Vector {
     x;
     y;
@@ -311,9 +169,8 @@ class Vector {
         return new Vector(this.x, this.y, this.z);
     }
     drawDot() {
-        let doodler1 = window['doodler'];
-        if (!doodler1) return;
-        doodler1.dot(this, {
+        if (!doodler) return;
+        doodler.dot(this, {
             weight: 2,
             color: 'red'
         });
@@ -376,12 +233,240 @@ class Vector {
         return Vector.dot(Vector.sub(a, b), Vector.sub(a, b));
     }
 }
+const init = (opt)=>{
+    if (window.doodler) throw 'Doodler has already been initialized in this window';
+    window.doodler = new Doodler(opt);
+    window.doodler.init();
+};
+class Doodler {
+    ctx;
+    _canvas;
+    layers = [];
+    bg;
+    framerate;
+    get width() {
+        return this.ctx.canvas.width;
+    }
+    get height() {
+        return this.ctx.canvas.height;
+    }
+    draggables = [];
+    constructor({ width , height , canvas , bg , framerate  }){
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            document.body.append(canvas);
+        }
+        this.bg = bg || 'white';
+        this.framerate = framerate || 60;
+        canvas.width = width;
+        canvas.height = height;
+        this._canvas = canvas;
+        const ctx = canvas.getContext('2d');
+        console.log(ctx);
+        if (!ctx) throw 'Unable to initialize Doodler: Canvas context not found';
+        this.ctx = ctx;
+    }
+    init() {
+        this._canvas.addEventListener('mousedown', (e)=>this.onClick(e));
+        this._canvas.addEventListener('mouseup', (e)=>this.offClick(e));
+        this._canvas.addEventListener('mousemove', (e)=>{
+            const rect = this._canvas.getBoundingClientRect();
+            this.mouseX = e.clientX - rect.left;
+            this.mouseY = e.clientY - rect.top;
+            for (const d of this.draggables.filter((d)=>d.beingDragged)){
+                d.point.add(e.movementX, e.movementY);
+            }
+        });
+        this.startDrawLoop();
+    }
+    timer;
+    startDrawLoop() {
+        this.timer = setInterval(()=>this.draw(), 1000 / this.framerate);
+    }
+    draw() {
+        this.ctx.fillStyle = this.bg;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        for (const [i, l] of (this.layers || []).entries()){
+            l(this.ctx, i);
+        }
+        this.drawUI();
+    }
+    createLayer(layer) {
+        this.layers.push(layer);
+    }
+    deleteLayer(layer) {
+        this.layers = this.layers.filter((l)=>l !== layer);
+    }
+    moveLayer(layer, index) {
+        let temp = this.layers.filter((l)=>l !== layer);
+        temp = [
+            ...temp.slice(0, index),
+            layer,
+            ...temp.slice(index)
+        ];
+        this.layers = temp;
+    }
+    line(start, end, style) {
+        this.setStyle(style);
+        this.ctx.beginPath();
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.lineTo(end.x, end.y);
+        this.ctx.stroke();
+    }
+    dot(at, style) {
+        this.setStyle({
+            ...style,
+            weight: 1
+        });
+        this.ctx.beginPath();
+        this.ctx.arc(at.x, at.y, style?.weight || 1, 0, Constants.TWO_PI);
+        this.ctx.fill();
+    }
+    drawCircle(at, radius, style) {
+        this.setStyle(style);
+        this.ctx.beginPath();
+        this.ctx.arc(at.x, at.y, radius, 0, Constants.TWO_PI);
+        this.ctx.stroke();
+    }
+    fillCircle(at, radius, style) {
+        this.setStyle(style);
+        this.ctx.beginPath();
+        this.ctx.arc(at.x, at.y, radius, 0, Constants.TWO_PI);
+        this.ctx.fill();
+    }
+    drawRect(at, width, height, style) {
+        this.setStyle(style);
+        this.ctx.strokeRect(at.x, at.y, width, height);
+    }
+    fillRect(at, width, height, style) {
+        this.setStyle(style);
+        this.ctx.fillRect(at.x, at.y, width, height);
+    }
+    drawSquare(at, size, style) {
+        this.drawRect(at, size, size, style);
+    }
+    fillSquare(at, size, style) {
+        this.fillRect(at, size, size, style);
+    }
+    drawCenteredRect(at, width, height, style) {
+        this.ctx.save();
+        this.ctx.translate(-width / 2, -height / 2);
+        this.drawRect(at, width, height, style);
+        this.ctx.restore();
+    }
+    fillCenteredRect(at, width, height, style) {
+        this.ctx.save();
+        this.ctx.translate(-width / 2, -height / 2);
+        this.fillRect(at, width, height, style);
+        this.ctx.restore();
+    }
+    drawCenteredSquare(at, size, style) {
+        this.drawCenteredRect(at, size, size, style);
+    }
+    fillCenteredSquare(at, size, style) {
+        this.fillCenteredRect(at, size, size, style);
+    }
+    drawBezier(a, b, c, d, style) {
+        this.setStyle(style);
+        this.ctx.beginPath();
+        this.ctx.moveTo(a.x, a.y);
+        this.ctx.bezierCurveTo(b.x, b.y, c.x, c.y, d.x, d.y);
+        this.ctx.stroke();
+    }
+    drawRotated(origin, angle, cb) {
+        this.ctx.save();
+        this.ctx.translate(origin.x, origin.y);
+        this.ctx.rotate(angle);
+        this.ctx.translate(-origin.x, -origin.y);
+        cb();
+        this.ctx.restore();
+    }
+    setStyle(style) {
+        const ctx = this.ctx;
+        ctx.fillStyle = style?.color || style?.fillColor || 'black';
+        ctx.strokeStyle = style?.color || style?.strokeColor || 'black';
+        ctx.lineWidth = style?.weight || 1;
+    }
+    mouseX = 0;
+    mouseY = 0;
+    registerDraggable(point, radius, style) {
+        const id = this.addUIElement('circle', point, radius, {
+            fillColor: '#5533ff50',
+            strokeColor: '#5533ff50'
+        });
+        this.draggables.push({
+            point,
+            radius,
+            style,
+            id
+        });
+    }
+    unregisterDraggable(point) {
+        for (const d of this.draggables){
+            if (d.point === point) {
+                this.removeUIElement(d.id);
+            }
+        }
+        this.draggables = this.draggables.filter((d)=>d.point !== point);
+    }
+    onClick(e) {
+        const rect = this._canvas.getBoundingClientRect();
+        e.clientX - rect.left;
+        e.clientY - rect.top;
+        for (const d of this.draggables){
+            if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
+                d.beingDragged = true;
+            } else d.beingDragged = false;
+        }
+    }
+    offClick(e) {
+        for (const d of this.draggables){
+            d.beingDragged = false;
+        }
+    }
+    uiElements = new Map();
+    uiDrawing = {
+        rectangle: (...args)=>{
+            !args[3].noFill && this.fillRect(args[0], args[1], args[2], args[3]);
+            !args[3].noStroke && this.drawRect(args[0], args[1], args[2], args[3]);
+        },
+        square: (...args)=>{
+            !args[2].noFill && this.fillSquare(args[0], args[1], args[2]);
+            !args[2].noStroke && this.drawSquare(args[0], args[1], args[2]);
+        },
+        circle: (...args)=>{
+            !args[2].noFill && this.fillCircle(args[0], args[1], args[2]);
+            !args[2].noStroke && this.drawCircle(args[0], args[1], args[2]);
+        }
+    };
+    drawUI() {
+        for (const [shape, ...args] of this.uiElements.values()){
+            this.uiDrawing[shape].apply(null, args);
+        }
+    }
+    addUIElement(shape, ...args) {
+        const id = crypto.randomUUID();
+        for (const arg of args){
+            delete arg.color;
+        }
+        this.uiElements.set(id, [
+            shape,
+            ...args
+        ]);
+        return id;
+    }
+    removeUIElement(id) {
+        this.uiElements.delete(id);
+    }
+}
 init({
     width: 400,
     height: 400
 });
 const movingVector = new Vector(100, 300);
 let angleMultiplier = 0;
+const v = new Vector(30, 30);
+doodler.registerDraggable(v, 20);
 doodler.createLayer(()=>{
     doodler.line(new Vector(100, 100), new Vector(200, 200));
     doodler.dot(new Vector(300, 300));
@@ -401,4 +486,10 @@ doodler.createLayer(()=>{
     });
     movingVector.set((movingVector.x + 1) % 400, movingVector.y);
     angleMultiplier += .001;
+});
+document.addEventListener('keyup', (e)=>{
+    e.preventDefault();
+    if (e.key === ' ') {
+        doodler.unregisterDraggable(v);
+    }
 });

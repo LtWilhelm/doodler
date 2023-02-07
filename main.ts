@@ -1,5 +1,3 @@
-import { Doodler } from "./canvas.ts";
-import { Constants } from "./geometry/constants.ts";
 /// <reference types="./global.d.ts" />
 
 import { Vector, initializeDoodler } from './mod.ts'
@@ -9,10 +7,10 @@ initializeDoodler({
   height: 400
 })
 
-// let doodler = window['doodler'];
-
 const movingVector = new Vector(100, 300);
 let angleMultiplier = 0;
+const v = new Vector(30,30);
+doodler.registerDraggable(v, 20)
 doodler.createLayer(() => {
 
   doodler.line(new Vector(100, 100), new Vector(200, 200))
@@ -29,6 +27,14 @@ doodler.createLayer(() => {
     doodler.drawCenteredSquare(rotatedOrigin, 30)
   })
 
+
   movingVector.set((movingVector.x + 1) % 400, movingVector.y);
   angleMultiplier += .001;
 });
+
+document.addEventListener('keyup', e => {
+  e.preventDefault();
+  if (e.key === ' ') {
+    doodler.unregisterDraggable(v);
+  }
+})
