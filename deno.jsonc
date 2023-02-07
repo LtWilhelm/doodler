@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "DOM",
+      "es2015"
+    ],
+    "types": [
+      "./global.d.ts"
+    ]
+  },
+  "tasks": {
+    "dev" : "deno bundle --watch main.ts bundle.js"
+  }
+}
