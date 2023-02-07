@@ -1,4 +1,5 @@
 import { Doodler } from "./canvas.ts";
+import { Constants } from "./geometry/constants.ts";
 /// <reference types="./global.d.ts" />
 
 import { Vector, initializeDoodler } from './mod.ts'
@@ -11,6 +12,7 @@ initializeDoodler({
 // let doodler = window['doodler'];
 
 const movingVector = new Vector(100, 300);
+let angleMultiplier = 0;
 doodler.createLayer(() => {
 
   doodler.line(new Vector(100, 100), new Vector(200, 200))
@@ -22,5 +24,11 @@ doodler.createLayer(() => {
   doodler.drawCenteredSquare(new Vector(200, 200), 40, { color: 'purple', weight: 5 })
   doodler.drawBezier(new Vector(100, 150), movingVector, new Vector(150, 300), new Vector(100, 250))
 
+  let rotatedOrigin = new Vector(200,200)
+  doodler.drawRotated(rotatedOrigin, Math.PI*angleMultiplier, () => {
+    doodler.drawCenteredSquare(rotatedOrigin, 30)
+  })
+
   movingVector.set((movingVector.x + 1) % 400, movingVector.y);
+  angleMultiplier += .001;
 });

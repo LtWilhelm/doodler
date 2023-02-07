@@ -132,6 +132,14 @@ class Doodler {
         this.ctx.bezierCurveTo(b.x, b.y, c.x, c.y, d.x, d.y);
         this.ctx.stroke();
     }
+    drawRotated(origin, angle, cb) {
+        this.ctx.save();
+        this.ctx.translate(origin.x, origin.y);
+        this.ctx.rotate(angle);
+        this.ctx.translate(-origin.x, -origin.y);
+        cb();
+        this.ctx.restore();
+    }
     setStyle(style) {
         const ctx = this.ctx;
         ctx.fillStyle = style?.color || style?.fillColor || 'black';
@@ -373,6 +381,7 @@ init({
     height: 400
 });
 const movingVector = new Vector(100, 300);
+let angleMultiplier = 0;
 doodler.createLayer(()=>{
     doodler.line(new Vector(100, 100), new Vector(200, 200));
     doodler.dot(new Vector(300, 300));
@@ -386,5 +395,10 @@ doodler.createLayer(()=>{
         weight: 5
     });
     doodler.drawBezier(new Vector(100, 150), movingVector, new Vector(150, 300), new Vector(100, 250));
+    let rotatedOrigin = new Vector(200, 200);
+    doodler.drawRotated(rotatedOrigin, Math.PI * angleMultiplier, ()=>{
+        doodler.drawCenteredSquare(rotatedOrigin, 30);
+    });
     movingVector.set((movingVector.x + 1) % 400, movingVector.y);
+    angleMultiplier += .001;
 });

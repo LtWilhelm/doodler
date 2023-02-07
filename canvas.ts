@@ -163,6 +163,15 @@ export class Doodler {
     this.ctx.stroke();
   }
 
+  drawRotated(origin: Vector, angle: number, cb: () => void){
+    this.ctx.save();
+    this.ctx.translate(origin.x, origin.y);
+    this.ctx.rotate(angle);
+    this.ctx.translate(-origin.x, -origin.y);
+    cb();
+    this.ctx.restore();
+  }
+
   setStyle(style?: IStyle) {
     const ctx = this.ctx;
     ctx.fillStyle = style?.color || style?.fillColor || 'black';
