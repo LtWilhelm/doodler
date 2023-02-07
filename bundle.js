@@ -390,6 +390,7 @@ class Doodler {
     mouseX = 0;
     mouseY = 0;
     registerDraggable(point, radius, style) {
+        if (this.draggables.find((d)=>d.point === point)) return;
         const id = this.addUIElement('circle', point, radius, {
             fillColor: '#5533ff50',
             strokeColor: '#5533ff50'
@@ -410,9 +411,6 @@ class Doodler {
         this.draggables = this.draggables.filter((d)=>d.point !== point);
     }
     onClick(e) {
-        const rect = this._canvas.getBoundingClientRect();
-        e.clientX - rect.left;
-        e.clientY - rect.top;
         for (const d of this.draggables){
             if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
                 d.beingDragged = true;
