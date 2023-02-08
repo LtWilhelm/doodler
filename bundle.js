@@ -410,16 +410,25 @@ class Doodler {
         }
         this.draggables = this.draggables.filter((d)=>d.point !== point);
     }
+    addDragEvents({ onDragEnd , onDragStart , point  }) {
+        const d = this.draggables.find((d)=>d.point === point);
+        if (d) {
+            d.onDragEnd = onDragEnd;
+            d.onDragStart = onDragStart;
+        }
+    }
     onClick(e) {
         for (const d of this.draggables){
             if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
                 d.beingDragged = true;
+                d.onDragStart?.call(null);
             } else d.beingDragged = false;
         }
     }
     offClick(e) {
         for (const d of this.draggables){
             d.beingDragged = false;
+            d.onDragEnd?.call(null);
         }
     }
     uiElements = new Map();

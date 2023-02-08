@@ -222,17 +222,31 @@ export class Doodler {
     this.draggables = this.draggables.filter(d => d.point !== point);
   }
 
+  addDragEvents({
+    onDragEnd,
+    onDragStart,
+    point
+  }: {point: Vector, onDragEnd: () => void, onDragStart: () => void}) {
+    const d = this.draggables.find(d =>d.point === point);
+    if (d) {
+      d.onDragEnd = onDragEnd;
+      d.onDragStart = onDragStart;
+    }
+  }
+
   onClick(e: MouseEvent) {
     for (const d of this.draggables) {
       if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
         d.beingDragged = true;
+        d.onDragStart?.call(null);
       } else d.beingDragged = false;
     }
   }
-
+  
   offClick(e:MouseEvent){
     for (const d of this.draggables) {
       d.beingDragged = false;
+      d.onDragEnd?.call(null);
     }
   }
 
@@ -296,6 +310,8 @@ type Draggable = {
   style?: IStyle & { shape: 'square' | 'circle' };
   beingDragged?: boolean;
   id: string;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }
 
 type uiDrawing = {
