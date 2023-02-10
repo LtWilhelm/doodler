@@ -56,9 +56,9 @@ export class Vector {
       return v;
     }
   }
-  add(x: number, y: number, z: number): void;
-  add(x: number, y: number): void;
-  add(v: Vector): void;
+  add(x: number, y: number, z: number): Vector;
+  add(x: number, y: number): Vector;
+  add(v: Vector): Vector;
   add(v: Vector | number, y?: number, z?: number) {
     if (arguments.length === 1 && typeof v !== 'number') {
       this.x += v.x;
@@ -73,10 +73,11 @@ export class Vector {
       this.y += y ?? 0;
       this.z += z ?? 0;
     }
+    return this;
   }
-  sub(x: number, y: number, z: number): void;
-  sub(x: number, y: number): void;
-  sub(v: Vector): void;
+  sub(x: number, y: number, z: number): Vector;
+  sub(x: number, y: number): Vector;
+  sub(v: Vector): Vector;
   sub(v: Vector | number, y?: number, z?: number) {
     if (arguments.length === 1 && typeof v !== 'number') {
       this.x -= v.x;
@@ -91,6 +92,7 @@ export class Vector {
       this.y -= y ?? 0;
       this.z -= z ?? 0;
     }
+    return this;
   }
   mult(v: number | Vector) {
     if (typeof v === 'number') {
@@ -114,6 +116,7 @@ export class Vector {
       this.y /= v.y;
       this.z /= v.z;
     }
+    return this;
   }
   rotate(angle: number) {
     const prev_x = this.x;
@@ -121,6 +124,7 @@ export class Vector {
     const s = Math.sin(angle);
     this.x = c * this.x - s * this.y;
     this.y = s * prev_x + c * this.y;
+    return this;
   }
   dist(v: Vector) {
     const dx = this.x - v.x,
@@ -165,6 +169,7 @@ export class Vector {
     this.x = lerp_val(this.x, x, amt!);
     this.y = lerp_val(this.y, y, amt!);
     this.z = lerp_val(this.z, z!, amt!);
+    return this;
   }
   normalize() {
     const m = this.mag();
@@ -178,6 +183,7 @@ export class Vector {
       this.normalize();
       this.mult(high);
     }
+    return this;
   }
   heading() {
     return (-Math.atan2(-this.y, this.x));
