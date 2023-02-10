@@ -37,6 +37,7 @@ export class Doodler {
   }
 
   private draggables: Draggable[] = [];
+  private clickables: Clickable[] = [];
 
   constructor({
     width,
@@ -222,12 +223,24 @@ export class Doodler {
     this.draggables = this.draggables.filter(d => d.point !== point);
   }
 
+  registerClickable(p1: Vector, p2: Vector, cb: () => void) {
+    const top = Math.min(p1.y, p2.y);
+    const left = Math.min(p1.x, p2.x);
+    const bottom = Math.max(p1.y, p2.y);
+    const right = Math.max(p1.x, p2.x);
+
+    this.clickables.push({
+      onClick: cb,
+      checkBound: (p) => p.y >= top && p.x >= left && p.y <= bottom && p.x <= right
+    })
+  }
+
   addDragEvents({
     onDragEnd,
     onDragStart,
     point
-  }: {point: Vector, onDragEnd?: () => void, onDragStart?: () => void}) {
-    const d = this.draggables.find(d =>d.point === point);
+  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void }) {
+    const d = this.draggables.find(d => d.point === point);
     if (d) {
       d.onDragEnd = onDragEnd;
       d.onDragStart = onDragStart;
@@ -235,15 +248,22 @@ export class Doodler {
   }
 
   onClick(e: MouseEvent) {
+    const mouse = new Vector(this.mouseX, this.mouseY)
     for (const d of this.draggables) {
-      if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
+      if (d.point.dist(mouse) <= d.radius) {
         d.beingDragged = true;
         d.onDragStart?.call(null);
       } else d.beingDragged = false;
     }
+
+    for (const c of this.clickables) {
+      if (c.checkBound(mouse)) {
+        c.onClick();
+      }
+    }
   }
-  
-  offClick(e:MouseEvent){
+
+  offClick(e: MouseEvent) {
     for (const d of this.draggables) {
       d.beingDragged = false;
       d.onDragEnd?.call(null);
@@ -312,6 +332,11 @@ type Draggable = {
   id: string;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+}
+
+type Clickable = {
+  onClick: () => void;
+  checkBound: (p: Vector) => boolean;
 }
 
 type uiDrawing = {
