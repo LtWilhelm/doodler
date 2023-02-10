@@ -235,6 +235,10 @@ export class Doodler {
     })
   }
 
+  unregisterClickable(cb: () => void) {
+    this.clickables = this.clickables.filter(c => c.onClick !== cb);
+  }
+
   addDragEvents({
     onDragEnd,
     onDragStart,
