@@ -195,6 +195,15 @@ export class Doodler {
     this.ctx.restore();
   }
 
+  drawImage(img: HTMLImageElement, at: Vector): void;
+  drawImage(img: HTMLImageElement, at: Vector, w: number, h: number): void;
+  drawImage(img: HTMLImageElement, at: Vector, w?: number, h?: number) {
+    w && h ? this.ctx.drawImage(img, at.x, at.y, w, h) : this.ctx.drawImage(img, at.x, at.y);
+  }
+  drawSprite(img: HTMLImageElement, spritePos: Vector, sWidth: number, sHeight: number, at: Vector, width: number, height: number) {
+    this.ctx.drawImage(img, spritePos.x, spritePos.y, sWidth, sHeight, at.x, at.y, width, height);
+  }
+
   setStyle(style?: IStyle) {
     const ctx = this.ctx;
     ctx.fillStyle = style?.color || style?.fillColor || 'black';

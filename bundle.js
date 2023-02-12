@@ -59,6 +59,7 @@ class Vector {
             this.y += y ?? 0;
             this.z += z ?? 0;
         }
+        return this;
     }
     sub(v, y, z) {
         if (arguments.length === 1 && typeof v !== 'number') {
@@ -73,6 +74,7 @@ class Vector {
             this.y -= y ?? 0;
             this.z -= z ?? 0;
         }
+        return this;
     }
     mult(v) {
         if (typeof v === 'number') {
@@ -96,6 +98,7 @@ class Vector {
             this.y /= v.y;
             this.z /= v.z;
         }
+        return this;
     }
     rotate(angle) {
         const prev_x = this.x;
@@ -103,6 +106,7 @@ class Vector {
         const s = Math.sin(angle);
         this.x = c * this.x - s * this.y;
         this.y = s * prev_x + c * this.y;
+        return this;
     }
     dist(v) {
         const dx = this.x - v.x, dy = this.y - v.y, dz = this.z - v.z;
@@ -135,6 +139,7 @@ class Vector {
         this.x = lerp_val(this.x, x, amt);
         this.y = lerp_val(this.y, y, amt);
         this.z = lerp_val(this.z, z, amt);
+        return this;
     }
     normalize() {
         const m = this.mag();
@@ -148,6 +153,7 @@ class Vector {
             this.normalize();
             this.mult(high);
         }
+        return this;
     }
     heading() {
         return -Math.atan2(-this.y, this.x);
@@ -251,6 +257,7 @@ class Doodler {
         return this.ctx.canvas.height;
     }
     draggables = [];
+    clickables = [];
     constructor({ width , height , canvas , bg , framerate  }){
         if (!canvas) {
             canvas = document.createElement('canvas');
@@ -381,6 +388,12 @@ class Doodler {
         cb();
         this.ctx.restore();
     }
+    drawImage(img, at, w, h) {
+        w && h ? this.ctx.drawImage(img, at.x, at.y, w, h) : this.ctx.drawImage(img, at.x, at.y);
+    }
+    drawSprite(img, spritePos, sWidth, sHeight, at, width, height) {
+        this.ctx.drawImage(img, spritePos.x, spritePos.y, sWidth, sHeight, at.x, at.y, width, height);
+    }
     setStyle(style) {
         const ctx = this.ctx;
         ctx.fillStyle = style?.color || style?.fillColor || 'black';
@@ -410,6 +423,19 @@ class Doodler {
         }
         this.draggables = this.draggables.filter((d)=>d.point !== point);
     }
+    registerClickable(p1, p2, cb) {
+        const top = Math.min(p1.y, p2.y);
+        const left = Math.min(p1.x, p2.x);
+        const bottom = Math.max(p1.y, p2.y);
+        const right = Math.max(p1.x, p2.x);
+        this.clickables.push({
+            onClick: cb,
+            checkBound: (p)=>p.y >= top && p.x >= left && p.y <= bottom && p.x <= right
+        });
+    }
+    unregisterClickable(cb) {
+        this.clickables = this.clickables.filter((c)=>c.onClick !== cb);
+    }
     addDragEvents({ onDragEnd , onDragStart , point  }) {
         const d = this.draggables.find((d)=>d.point === point);
         if (d) {
@@ -418,11 +444,17 @@ class Doodler {
         }
     }
     onClick(e) {
+        const mouse = new Vector(this.mouseX, this.mouseY);
         for (const d of this.draggables){
-            if (d.point.dist(new Vector(this.mouseX, this.mouseY)) <= d.radius) {
+            if (d.point.dist(mouse) <= d.radius) {
                 d.beingDragged = true;
                 d.onDragStart?.call(null);
             } else d.beingDragged = false;
+        }
+        for (const c of this.clickables){
+            if (c.checkBound(mouse)) {
+                c.onClick();
+            }
         }
     }
     offClick(e) {
@@ -474,6 +506,10 @@ const movingVector = new Vector(100, 300);
 let angleMultiplier = 0;
 const v = new Vector(30, 30);
 doodler.registerDraggable(v, 20);
+const img = new Image();
+img.src = './EngineSprites.png';
+img.hidden;
+document.body.append(img);
 doodler.createLayer(()=>{
     doodler.line(new Vector(100, 100), new Vector(200, 200));
     doodler.dot(new Vector(300, 300));
@@ -490,9 +526,11 @@ doodler.createLayer(()=>{
     let rotatedOrigin = new Vector(200, 200);
     doodler.drawRotated(rotatedOrigin, Math.PI * angleMultiplier, ()=>{
         doodler.drawCenteredSquare(rotatedOrigin, 30);
+        doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(160, 300), 80, 20);
     });
     movingVector.set((movingVector.x + 1) % 400, movingVector.y);
     angleMultiplier += .001;
+    doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(100, 300), 80, 20);
 });
 document.addEventListener('keyup', (e)=>{
     e.preventDefault();

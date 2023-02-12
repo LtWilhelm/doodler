@@ -9,8 +9,13 @@ initializeDoodler({
 
 const movingVector = new Vector(100, 300);
 let angleMultiplier = 0;
-const v = new Vector(30,30);
+const v = new Vector(30, 30);
 doodler.registerDraggable(v, 20)
+const img = new Image();
+img.src = './EngineSprites.png'
+img.hidden
+document.body.append(img)
+
 doodler.createLayer(() => {
 
   doodler.line(new Vector(100, 100), new Vector(200, 200))
@@ -22,14 +27,17 @@ doodler.createLayer(() => {
   doodler.drawCenteredSquare(new Vector(200, 200), 40, { color: 'purple', weight: 5 })
   doodler.drawBezier(new Vector(100, 150), movingVector, new Vector(150, 300), new Vector(100, 250))
 
-  let rotatedOrigin = new Vector(200,200)
-  doodler.drawRotated(rotatedOrigin, Math.PI*angleMultiplier, () => {
+  let rotatedOrigin = new Vector(200, 200)
+  doodler.drawRotated(rotatedOrigin, Math.PI * angleMultiplier, () => {
     doodler.drawCenteredSquare(rotatedOrigin, 30)
+    doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(160, 300), 80, 20)
   })
 
 
   movingVector.set((movingVector.x + 1) % 400, movingVector.y);
   angleMultiplier += .001;
+
+  doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(100, 300), 80, 20)
 });
 
 document.addEventListener('keyup', e => {
