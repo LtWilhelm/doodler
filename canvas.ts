@@ -75,6 +75,7 @@ export class Doodler {
 
       for (const d of this.draggables.filter(d => d.beingDragged)) {
         d.point.add(e.movementX, e.movementY)
+        d.onDrag && d.onDrag({x: e.movementX, y: e.movementY});
       }
     })
     this.startDrawLoop();
@@ -251,12 +252,14 @@ export class Doodler {
   addDragEvents({
     onDragEnd,
     onDragStart,
+    onDrag,
     point
-  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void }) {
+  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void, onDrag?: () => void }) {
     const d = this.draggables.find(d => d.point === point);
     if (d) {
       d.onDragEnd = onDragEnd;
       d.onDragStart = onDragStart;
+      d.onDrag = onDrag;
     }
   }
 
@@ -345,6 +348,7 @@ type Draggable = {
   id: string;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  onDrag?: (dragDistance?: {x: number, y: number}) => void;
 }
 
 type Clickable = {
