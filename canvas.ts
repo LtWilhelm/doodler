@@ -254,7 +254,7 @@ export class Doodler {
     onDragStart,
     onDrag,
     point
-  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void, onDrag?: () => void }) {
+  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void, onDrag?: (movement?: {x: number, y: number}) => void }) {
     const d = this.draggables.find(d => d.point === point);
     if (d) {
       d.onDragEnd = onDragEnd;
