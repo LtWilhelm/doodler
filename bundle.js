@@ -398,6 +398,12 @@ class Doodler {
         cb();
         this.ctx.restore();
     }
+    drawScaled(scale, cb) {
+        this.ctx.save();
+        this.ctx.transform(scale, 0, 0, scale, 0, 0);
+        cb();
+        this.ctx.restore();
+    }
     drawImage(img, at, w, h) {
         w && h ? this.ctx.drawImage(img, at.x, at.y, w, h) : this.ctx.drawImage(img, at.x, at.y);
     }
@@ -782,21 +788,23 @@ img.hidden;
 document.body.append(img);
 const p = new Vector(200, 200);
 doodler.createLayer(()=>{
-    doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
-        color: 'grey',
-        weight: 2
-    });
-    doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
-        color: 'grey',
-        weight: 2
-    });
-    doodler.line(p, p.copy().add(0, 12), {
-        color: 'brown',
-        weight: 4
-    });
-    doodler.line(p, p.copy().add(0, -12), {
-        color: 'brown',
-        weight: 4
+    doodler.drawScaled(1.5, ()=>{
+        doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
+            color: 'grey',
+            weight: 2
+        });
+        doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
+            color: 'grey',
+            weight: 2
+        });
+        doodler.line(p, p.copy().add(0, 12), {
+            color: 'brown',
+            weight: 4
+        });
+        doodler.line(p, p.copy().add(0, -12), {
+            color: 'brown',
+            weight: 4
+        });
     });
 });
 document.addEventListener('keyup', (e)=>{

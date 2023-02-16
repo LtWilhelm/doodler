@@ -189,6 +189,13 @@ export class Doodler {
     this.ctx.restore();
   }
 
+  drawScaled(scale: number, cb: () => void) {
+    this.ctx.save();
+    this.ctx.transform(scale, 0, 0, scale, 0, 0);
+    cb();
+    this.ctx.restore();
+  }
+
   drawImage(img: HTMLImageElement, at: Vector): void;
   drawImage(img: HTMLImageElement, at: Vector, w: number, h: number): void;
   drawImage(img: HTMLImageElement, at: Vector, w?: number, h?: number) {

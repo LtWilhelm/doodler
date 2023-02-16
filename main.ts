@@ -41,10 +41,10 @@ doodler.createLayer(() => {
 
   // doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(100, 300), 80, 20)
 
-  doodler.line(p.copy().add(-8,10), p.copy().add(8,10), {color: 'grey', weight: 2})
+  doodler.drawScaled(1.5, () => {doodler.line(p.copy().add(-8,10), p.copy().add(8,10), {color: 'grey', weight: 2})
   doodler.line(p.copy().add(-8,-10), p.copy().add(8,-10), {color: 'grey', weight: 2})
   doodler.line(p, p.copy().add(0,12), {color: 'brown', weight: 4})
-  doodler.line(p, p.copy().add(0,-12), {color: 'brown', weight: 4})
+  doodler.line(p, p.copy().add(0,-12), {color: 'brown', weight: 4})})
 });
 
 document.addEventListener('keyup', e => {
