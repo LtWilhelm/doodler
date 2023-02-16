@@ -2,7 +2,7 @@
 
 import { Constants } from "./constants.ts";
 
-export class Vector {
+export class Vector implements Point {
   x: number;
   y: number;
   z: number;
@@ -277,4 +277,35 @@ export class Vector {
   static hypot2(a: Vector, b: Vector) {
     return Vector.dot(Vector.sub(a, b), Vector.sub(a, b))
   }
+}
+
+export class OriginVector extends Vector {
+  origin: Point;
+
+  get halfwayPoint() {
+    return {
+      x: (this.mag()/2 * Math.sin(this.heading())) + this.origin.x,
+      y: (this.mag()/2 * Math.cos(this.heading())) + this.origin.y
+    }
+  }
+
+  constructor(origin: Point, p: Point) {
+    super(p.x, p.y, p.z);
+    this.origin = origin;
+  }
+
+  static from(origin: Point, p: Point) {
+    const v = {
+      x: p.x - origin.x,
+      y: p.y - origin.y,
+    };
+
+    return new OriginVector(origin, v);
+  }
+}
+
+export interface Point {
+  x: number;
+  y: number;
+  z?: number;
 }

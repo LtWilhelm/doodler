@@ -239,11 +239,28 @@ class Vector {
         return Vector.dot(Vector.sub(a, b), Vector.sub(a, b));
     }
 }
-const init = (opt)=>{
-    if (window.doodler) throw 'Doodler has already been initialized in this window';
-    window.doodler = new Doodler(opt);
-    window.doodler.init();
-};
+class OriginVector extends Vector {
+    origin;
+    get halfwayPoint() {
+        return {
+            x: this.mag() / 2 * Math.sin(this.heading()) + this.origin.x,
+            y: this.mag() / 2 * Math.cos(this.heading()) + this.origin.y
+        };
+    }
+    constructor(origin, p){
+        super(p.x, p.y, p.z);
+        this.origin = origin;
+    }
+    static from(origin, p) {
+        const v = {
+            x: p.x - origin.x,
+            y: p.y - origin.y
+        };
+        return new OriginVector(origin, v);
+    }
+}
+const easeInOut = (x)=>x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const map = (value, x1, y1, x2, y2)=>(value - x1) * (y2 - x2) / (y1 - x1) + x2;
 class Doodler {
     ctx;
     _canvas;
@@ -258,6 +275,7 @@ class Doodler {
     }
     draggables = [];
     clickables = [];
+    dragTarget;
     constructor({ width , height , canvas , bg , framerate  }){
         if (!canvas) {
             canvas = document.createElement('canvas');
@@ -269,21 +287,13 @@ class Doodler {
         canvas.height = height;
         this._canvas = canvas;
         const ctx = canvas.getContext('2d');
-        console.log(ctx);
         if (!ctx) throw 'Unable to initialize Doodler: Canvas context not found';
         this.ctx = ctx;
     }
     init() {
         this._canvas.addEventListener('mousedown', (e)=>this.onClick(e));
         this._canvas.addEventListener('mouseup', (e)=>this.offClick(e));
-        this._canvas.addEventListener('mousemove', (e)=>{
-            const rect = this._canvas.getBoundingClientRect();
-            this.mouseX = e.clientX - rect.left;
-            this.mouseY = e.clientY - rect.top;
-            for (const d of this.draggables.filter((d)=>d.beingDragged)){
-                d.point.add(e.movementX, e.movementY);
-            }
-        });
+        this._canvas.addEventListener('mousemove', (e)=>this.onDrag(e));
         this.startDrawLoop();
     }
     timer;
@@ -436,11 +446,12 @@ class Doodler {
     unregisterClickable(cb) {
         this.clickables = this.clickables.filter((c)=>c.onClick !== cb);
     }
-    addDragEvents({ onDragEnd , onDragStart , point  }) {
+    addDragEvents({ onDragEnd , onDragStart , onDrag , point  }) {
         const d = this.draggables.find((d)=>d.point === point);
         if (d) {
             d.onDragEnd = onDragEnd;
             d.onDragStart = onDragStart;
+            d.onDrag = onDrag;
         }
     }
     onClick(e) {
@@ -449,6 +460,7 @@ class Doodler {
             if (d.point.dist(mouse) <= d.radius) {
                 d.beingDragged = true;
                 d.onDragStart?.call(null);
+                this.dragTarget = d;
             } else d.beingDragged = false;
         }
         for (const c of this.clickables){
@@ -461,6 +473,19 @@ class Doodler {
         for (const d of this.draggables){
             d.beingDragged = false;
             d.onDragEnd?.call(null);
+        }
+        this.dragTarget = undefined;
+    }
+    onDrag(e) {
+        this._canvas.getBoundingClientRect();
+        this.mouseX = e.offsetX;
+        this.mouseY = e.offsetY;
+        for (const d of this.draggables.filter((d)=>d.beingDragged)){
+            d.point.add(e.movementX, e.movementY);
+            d.onDrag && d.onDrag({
+                x: e.movementX,
+                y: e.movementY
+            });
         }
     }
     uiElements = new Map();
@@ -498,10 +523,256 @@ class Doodler {
         this.uiElements.delete(id);
     }
 }
+const maxZoomScale = 4;
+class ZoomableDoodler extends Doodler {
+    scale = 1;
+    dragging = false;
+    origin = {
+        x: 0,
+        y: 0
+    };
+    mouse = {
+        x: 0,
+        y: 0
+    };
+    previousTouchLength;
+    touchTimer;
+    hasDoubleTapped = false;
+    zooming = false;
+    scaleAround = {
+        x: 0,
+        y: 0
+    };
+    constructor(options){
+        super(options);
+        this._canvas.addEventListener('wheel', (e)=>{
+            this.scaleAtMouse(e.deltaY < 0 ? 1.1 : .9);
+            if (this.scale === 1) {
+                this.origin.x = 0;
+                this.origin.y = 0;
+            }
+        });
+        this._canvas.addEventListener('dblclick', (e)=>{
+            e.preventDefault();
+            this.scale = 1;
+            this.origin.x = 0;
+            this.origin.y = 0;
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        });
+        this._canvas.addEventListener('mousedown', (e)=>{
+            e.preventDefault();
+            this.dragging = true;
+        });
+        this._canvas.addEventListener('mouseup', (e)=>{
+            e.preventDefault();
+            this.dragging = false;
+        });
+        this._canvas.addEventListener('mouseleave', (e)=>{
+            this.dragging = false;
+        });
+        this._canvas.addEventListener('mousemove', (e)=>{
+            const prev = this.mouse;
+            this.mouse = {
+                x: e.offsetX,
+                y: e.offsetY
+            };
+            if (this.dragging && !this.dragTarget) this.drag(prev);
+        });
+        this._canvas.addEventListener('touchstart', (e)=>{
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                const t1 = e.touches.item(0);
+                if (t1) {
+                    this.mouse = this.getTouchOffset({
+                        x: t1.clientX,
+                        y: t1.clientY
+                    });
+                }
+            } else {
+                clearTimeout(this.touchTimer);
+            }
+        });
+        this._canvas.addEventListener('touchend', (e)=>{
+            if (e.touches.length !== 2) {
+                this.previousTouchLength = undefined;
+            }
+            switch(e.touches.length){
+                case 1:
+                    break;
+                case 0:
+                    if (!this.zooming) {
+                        this.events.get('touchend')?.map((cb)=>cb(e));
+                    }
+                    break;
+            }
+            this.dragging = e.touches.length === 1;
+            clearTimeout(this.touchTimer);
+        });
+        this._canvas.addEventListener('touchmove', (e)=>{
+            e.preventDefault();
+            if (e.touches.length === 2) {
+                const t1 = e.touches.item(0);
+                const t2 = e.touches.item(1);
+                if (t1 && t2) {
+                    const vect = OriginVector.from(this.getTouchOffset({
+                        x: t1.clientX,
+                        y: t1.clientY
+                    }), {
+                        x: t2.clientX,
+                        y: t2.clientY
+                    });
+                    if (this.previousTouchLength) {
+                        const diff = this.previousTouchLength - vect.mag();
+                        this.scaleAt(vect.halfwayPoint, diff < 0 ? 1.01 : .99);
+                        this.scaleAround = {
+                            ...vect.halfwayPoint
+                        };
+                    }
+                    this.previousTouchLength = vect.mag();
+                }
+            }
+            if (e.touches.length === 1) {
+                this.dragging === true;
+                const t11 = e.touches.item(0);
+                if (t11) {
+                    const prev = this.mouse;
+                    this.mouse = this.getTouchOffset({
+                        x: t11.clientX,
+                        y: t11.clientY
+                    });
+                    this.drag(prev);
+                }
+            }
+        });
+        this._canvas.addEventListener('touchstart', (e)=>{
+            if (e.touches.length !== 1) return false;
+            if (!this.hasDoubleTapped) {
+                this.hasDoubleTapped = true;
+                setTimeout(()=>this.hasDoubleTapped = false, 300);
+                return false;
+            }
+            console.log(this.mouse);
+            if (this.scale > 1) {
+                this.frameCounter = map(this.scale, maxZoomScale, 1, 0, 59);
+                this.zoomDirection = -1;
+            } else {
+                this.frameCounter = 0;
+                this.zoomDirection = 1;
+            }
+            if (this.zoomDirection > 0) this.scaleAround = {
+                ...this.mouse
+            };
+            this.events.get('doubletap')?.map((cb)=>cb(e));
+        });
+    }
+    worldToScreen(x, y) {
+        x = x * this.scale + this.origin.x;
+        y = y * this.scale + this.origin.y;
+        return {
+            x,
+            y
+        };
+    }
+    screenToWorld(x, y) {
+        x = (x - this.origin.x) / this.scale;
+        y = (y - this.origin.y) / this.scale;
+        return {
+            x,
+            y
+        };
+    }
+    scaleAtMouse(scaleBy) {
+        if (this.scale === 4 && scaleBy > 1) return;
+        this.scaleAt({
+            x: this.mouse.x,
+            y: this.mouse.y
+        }, scaleBy);
+    }
+    scaleAt(p, scaleBy) {
+        this.scale = Math.min(Math.max(this.scale * scaleBy, 1), maxZoomScale);
+        this.origin.x = p.x - (p.x - this.origin.x) * scaleBy;
+        this.origin.y = p.y - (p.y - this.origin.y) * scaleBy;
+        this.constrainOrigin();
+    }
+    drag(prev) {
+        if (this.scale > 1) {
+            const xOffset = this.mouse.x - prev.x;
+            const yOffset = this.mouse.y - prev.y;
+            this.origin.x += xOffset;
+            this.origin.y += yOffset;
+            this.constrainOrigin();
+        }
+    }
+    constrainOrigin() {
+        this.origin.x = Math.min(Math.max(this.origin.x, -this._canvas.width * this.scale + this._canvas.width), 0);
+        this.origin.y = Math.min(Math.max(this.origin.y, -this._canvas.height * this.scale + this._canvas.height), 0);
+    }
+    draw() {
+        this.ctx.setTransform(this.scale, 0, 0, this.scale, this.origin.x, this.origin.y);
+        this.animateZoom();
+        this.ctx.fillStyle = this.bg;
+        this.ctx.fillRect(0, 0, this.width / this.scale, this.height / this.scale);
+        super.draw();
+    }
+    getTouchOffset(p) {
+        const { x , y  } = this._canvas.getBoundingClientRect();
+        const offsetX = p.x - x;
+        const offsetY = p.y - y;
+        return {
+            x: offsetX,
+            y: offsetY
+        };
+    }
+    onDrag(e) {
+        const d = {
+            ...e,
+            movementX: e.movementX / this.scale,
+            movementY: e.movementY / this.scale
+        };
+        super.onDrag(d);
+        const { x , y  } = this.screenToWorld(e.offsetX, e.offsetY);
+        this.mouseX = x;
+        this.mouseY = y;
+    }
+    zoomDirection = -1;
+    frameCounter = 60;
+    animateZoom() {
+        if (this.frameCounter < 60) {
+            const frame = easeInOut(map(this.frameCounter, 0, 59, 0, 1));
+            switch(this.zoomDirection){
+                case 1:
+                    {
+                        this.scale = map(frame, 0, 1, 1, maxZoomScale);
+                    }
+                    break;
+                case -1:
+                    {
+                        this.scale = map(frame, 0, 1, maxZoomScale, 1);
+                    }
+                    break;
+            }
+            this.origin.x = this.scaleAround.x - this.scaleAround.x * this.scale;
+            this.origin.y = this.scaleAround.y - this.scaleAround.y * this.scale;
+            this.constrainOrigin();
+            this.frameCounter++;
+        }
+    }
+    events = new Map();
+    registerEvent(eventName, cb) {
+        let events = this.events.get(eventName);
+        if (!events) events = this.events.set(eventName, []).get(eventName);
+        events.push(cb);
+    }
+}
+const init = (opt, zoomable)=>{
+    if (window.doodler) throw 'Doodler has already been initialized in this window';
+    window.doodler = zoomable ? new ZoomableDoodler(opt) : new Doodler(opt);
+    window.doodler.init();
+};
 init({
     width: 400,
     height: 400
-});
+}, true);
 new Vector(100, 300);
 const v = new Vector(30, 30);
 doodler.registerDraggable(v, 20);

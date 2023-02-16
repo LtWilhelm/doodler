@@ -5,7 +5,7 @@ import { Vector, initializeDoodler } from './mod.ts'
 initializeDoodler({
   width: 400,
   height: 400
-})
+}, true);
 
 const movingVector = new Vector(100, 300);
 let angleMultiplier = 0;

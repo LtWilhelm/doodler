@@ -3,14 +3,15 @@
 
 import { Constants } from "./geometry/constants.ts";
 import { Vector } from "./geometry/vector.ts";
+import { ZoomableDoodler } from "./zoomableCanvas.ts";
 
-export const init = (opt: IDoodlerOptions) => {
+export const init = (opt: IDoodlerOptions, zoomable: boolean) => {
   if (window.doodler) throw 'Doodler has already been initialized in this window'
-  window.doodler = new Doodler(opt);
+  window.doodler = zoomable ? new ZoomableDoodler(opt) : new Doodler(opt);
   window.doodler.init();
 }
 
-interface IDoodlerOptions {
+export interface IDoodlerOptions {
   width: number;
   height: number;
   canvas?: HTMLCanvasElement;
@@ -21,12 +22,12 @@ interface IDoodlerOptions {
 type layer = (ctx: CanvasRenderingContext2D, index: number) => void;
 
 export class Doodler {
-  private ctx: CanvasRenderingContext2D;
-  private _canvas: HTMLCanvasElement;
+  protected ctx: CanvasRenderingContext2D;
+  protected _canvas: HTMLCanvasElement;
 
   private layers: layer[] = [];
 
-  private bg: string;
+  protected bg: string;
   private framerate: number;
 
   get width() {
@@ -38,6 +39,8 @@ export class Doodler {
 
   private draggables: Draggable[] = [];
   private clickables: Clickable[] = [];
+
+  protected dragTarget?: Draggable;
 
   constructor({
     width,
@@ -60,7 +63,6 @@ export class Doodler {
     this._canvas = canvas;
 
     const ctx = canvas.getContext('2d');
-    console.log(ctx);
     if (!ctx) throw 'Unable to initialize Doodler: Canvas context not found';
     this.ctx = ctx;
   }
@@ -68,16 +70,7 @@ export class Doodler {
   init() {
     this._canvas.addEventListener('mousedown', e => this.onClick(e));
     this._canvas.addEventListener('mouseup', e => this.offClick(e));
-    this._canvas.addEventListener('mousemove', e => {
-      const rect = this._canvas.getBoundingClientRect();
-      this.mouseX = e.clientX - rect.left;
-      this.mouseY = e.clientY - rect.top;
-
-      for (const d of this.draggables.filter(d => d.beingDragged)) {
-        d.point.add(e.movementX, e.movementY)
-        d.onDrag && d.onDrag({x: e.movementX, y: e.movementY});
-      }
-    })
+    this._canvas.addEventListener('mousemove', e => this.onDrag(e));
     this.startDrawLoop();
   }
 
@@ -86,7 +79,7 @@ export class Doodler {
     this.timer = setInterval(() => this.draw(), 1000 / this.framerate);
   }
 
-  private draw() {
+  protected draw() {
     this.ctx.fillStyle = this.bg;
     this.ctx.fillRect(0, 0, this.width, this.height);
     // for (const d of this.draggables.filter(d => d.beingDragged)) {
@@ -254,7 +247,7 @@ export class Doodler {
     onDragStart,
     onDrag,
     point
-  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void, onDrag?: (movement?: {x: number, y: number}) => void }) {
+  }: { point: Vector, onDragEnd?: () => void, onDragStart?: () => void, onDrag?: (movement: { x: number, y: number }) => void }) {
     const d = this.draggables.find(d => d.point === point);
     if (d) {
       d.onDragEnd = onDragEnd;
@@ -269,6 +262,7 @@ export class Doodler {
       if (d.point.dist(mouse) <= d.radius) {
         d.beingDragged = true;
         d.onDragStart?.call(null);
+        this.dragTarget = d;
       } else d.beingDragged = false;
     }
 
@@ -283,6 +277,20 @@ export class Doodler {
     for (const d of this.draggables) {
       d.beingDragged = false;
       d.onDragEnd?.call(null);
+    }
+    this.dragTarget = undefined;
+  }
+
+  onDrag(e: MouseEvent) {
+    const rect = this._canvas.getBoundingClientRect();
+    this.mouseX = e.offsetX;
+    this.mouseY = e.offsetY;
+    // this.mouseX = e.clientX - rect.left;
+    // this.mouseY = e.clientY - rect.top;
+
+    for (const d of this.draggables.filter(d => d.beingDragged)) {
+      d.point.add(e.movementX, e.movementY)
+      d.onDrag && d.onDrag({ x: e.movementX, y: e.movementY });
     }
   }
 
@@ -348,7 +356,7 @@ type Draggable = {
   id: string;
   onDragStart?: () => void;
   onDragEnd?: () => void;
-  onDrag?: (dragDistance?: {x: number, y: number}) => void;
+  onDrag?: (dragDistance: { x: number, y: number }) => void;
 }
 
 type Clickable = {
