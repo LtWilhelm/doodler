@@ -529,7 +529,6 @@ class Doodler {
         this.uiElements.delete(id);
     }
 }
-const maxZoomScale = 4;
 class ZoomableDoodler extends Doodler {
     scale = 1;
     dragging = false;
@@ -549,6 +548,7 @@ class ZoomableDoodler extends Doodler {
         x: 0,
         y: 0
     };
+    maxScale = 4;
     constructor(options){
         super(options);
         this._canvas.addEventListener('wheel', (e)=>{
@@ -659,7 +659,7 @@ class ZoomableDoodler extends Doodler {
             }
             console.log(this.mouse);
             if (this.scale > 1) {
-                this.frameCounter = map(this.scale, maxZoomScale, 1, 0, 59);
+                this.frameCounter = map(this.scale, this.maxScale, 1, 0, 59);
                 this.zoomDirection = -1;
             } else {
                 this.frameCounter = 0;
@@ -688,14 +688,14 @@ class ZoomableDoodler extends Doodler {
         };
     }
     scaleAtMouse(scaleBy) {
-        if (this.scale === 4 && scaleBy > 1) return;
+        if (this.scale === this.maxScale && scaleBy > 1) return;
         this.scaleAt({
             x: this.mouse.x,
             y: this.mouse.y
         }, scaleBy);
     }
     scaleAt(p, scaleBy) {
-        this.scale = Math.min(Math.max(this.scale * scaleBy, 1), maxZoomScale);
+        this.scale = Math.min(Math.max(this.scale * scaleBy, 1), this.maxScale);
         this.origin.x = p.x - (p.x - this.origin.x) * scaleBy;
         this.origin.y = p.y - (p.y - this.origin.y) * scaleBy;
         this.constrainOrigin();
@@ -748,12 +748,12 @@ class ZoomableDoodler extends Doodler {
             switch(this.zoomDirection){
                 case 1:
                     {
-                        this.scale = map(frame, 0, 1, 1, maxZoomScale);
+                        this.scale = map(frame, 0, 1, 1, this.maxScale);
                     }
                     break;
                 case -1:
                     {
-                        this.scale = map(frame, 0, 1, maxZoomScale, 1);
+                        this.scale = map(frame, 0, 1, this.maxScale, 1);
                     }
                     break;
             }
