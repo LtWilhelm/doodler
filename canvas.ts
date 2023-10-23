@@ -81,6 +81,7 @@ export class Doodler {
   }
 
   protected draw() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.fillStyle = this.bg;
     this.ctx.fillRect(0, 0, this.width, this.height);
     // for (const d of this.draggables.filter(d => d.beingDragged)) {
@@ -243,6 +244,10 @@ export class Doodler {
     this.setStyle(style);
     // TODO: add text alignment to style
     this.ctx.strokeText(text, pos.x, pos.y, maxWidth);
+  }
+
+  clearRect(at: Vector, width: number, height: number) {
+    this.ctx.clearRect(at.x, at.y, width, height);
   }
 
   // Interaction
