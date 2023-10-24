@@ -414,6 +414,15 @@ interface IStyle {
 
   noStroke?: boolean;
   noFill?: boolean;
+
+  textAlign?: "center" | "end" | "left" | "right" | "start";
+  textBaseline?:
+    | "alphabetic"
+    | "top"
+    | "hanging"
+    | "middle"
+    | "ideographic"
+    | "bottom";
 }
 
 interface IDrawable {
