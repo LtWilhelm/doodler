@@ -89,6 +89,7 @@ export class Doodler {
     // }
     for (const [i, l] of (this.layers || []).entries()) {
       l(this.ctx, i);
+      this.drawDeferred();
     }
     this.drawUI();
   }
@@ -225,6 +226,18 @@ export class Doodler {
       width,
       height,
     );
+  }
+
+  private deferredDrawings: (() => void)[] = [];
+
+  deferDrawing(cb: () => void) {
+    this.deferredDrawings.push(cb);
+  }
+
+  drawDeferred() {
+    while (this.deferredDrawings.length) {
+      this.deferredDrawings.pop()?.();
+    }
   }
 
   setStyle(style?: IStyle) {
