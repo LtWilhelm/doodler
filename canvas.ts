@@ -233,6 +233,9 @@ export class Doodler {
     ctx.strokeStyle = style?.color || style?.strokeColor || "black";
 
     ctx.lineWidth = style?.weight || 1;
+
+    ctx.textAlign = style?.textAlign || ctx.textAlign;
+    ctx.textBaseline = style?.textBaseline || ctx.textBaseline;
   }
 
   fillText(text: string, pos: Vector, maxWidth: number, style?: IStyle) {
