@@ -199,6 +199,13 @@ export class Doodler {
     this.ctx.restore();
   }
 
+  drawWithAlpha(alpha: number, cb: () => void) {
+    this.ctx.save();
+    this.ctx.globalAlpha = Math.min(Math.max(alpha, 0), 1);
+    cb();
+    this.ctx.restore();
+  }
+
   drawImage(img: HTMLImageElement, at: Vector): void;
   drawImage(img: HTMLImageElement, at: Vector, w: number, h: number): void;
   drawImage(img: HTMLImageElement, at: Vector, w?: number, h?: number) {
