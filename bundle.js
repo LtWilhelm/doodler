@@ -276,24 +276,25 @@ class Doodler {
     draggables = [];
     clickables = [];
     dragTarget;
-    constructor({ width , height , canvas , bg , framerate  }){
+    constructor({ width, height, canvas, bg, framerate }, postInit){
         if (!canvas) {
-            canvas = document.createElement('canvas');
+            canvas = document.createElement("canvas");
             document.body.append(canvas);
         }
-        this.bg = bg || 'white';
+        this.bg = bg || "white";
         this.framerate = framerate || 60;
         canvas.width = width;
         canvas.height = height;
         this._canvas = canvas;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw 'Unable to initialize Doodler: Canvas context not found';
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw "Unable to initialize Doodler: Canvas context not found";
         this.ctx = ctx;
+        postInit?.(this.ctx);
     }
     init() {
-        this._canvas.addEventListener('mousedown', (e)=>this.onClick(e));
-        this._canvas.addEventListener('mouseup', (e)=>this.offClick(e));
-        this._canvas.addEventListener('mousemove', (e)=>this.onDrag(e));
+        this._canvas.addEventListener("mousedown", (e)=>this.onClick(e));
+        this._canvas.addEventListener("mouseup", (e)=>this.offClick(e));
+        this._canvas.addEventListener("mousemove", (e)=>this.onDrag(e));
         this.startDrawLoop();
     }
     timer;
@@ -301,10 +302,12 @@ class Doodler {
         this.timer = setInterval(()=>this.draw(), 1000 / this.framerate);
     }
     draw() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
         this.ctx.fillStyle = this.bg;
         this.ctx.fillRect(0, 0, this.width, this.height);
         for (const [i, l] of (this.layers || []).entries()){
             l(this.ctx, i);
+            this.drawDeferred();
         }
         this.drawUI();
     }
@@ -404,25 +407,67 @@ class Doodler {
         cb();
         this.ctx.restore();
     }
+    drawWithAlpha(alpha, cb) {
+        this.ctx.save();
+        this.ctx.globalAlpha = Math.min(Math.max(alpha, 0), 1);
+        cb();
+        this.ctx.restore();
+    }
     drawImage(img, at, w, h) {
         w && h ? this.ctx.drawImage(img, at.x, at.y, w, h) : this.ctx.drawImage(img, at.x, at.y);
+    }
+    drawImageWithOutline(img, at, w, h, style) {
+        this.ctx.save();
+        const s = (typeof w === "number" || !w ? style?.weight : w.weight) || 1;
+        this.ctx.shadowColor = (typeof w === "number" || !w ? style?.color || style?.fillColor : w.color || w.strokeColor) || "red";
+        this.ctx.shadowBlur = 0;
+        for(let x = -s; x <= s; x++){
+            for(let y = -s; y <= s; y++){
+                this.ctx.shadowOffsetX = x;
+                this.ctx.shadowOffsetY = y;
+                typeof w === "number" && h ? this.ctx.drawImage(img, at.x, at.y, w, h) : this.ctx.drawImage(img, at.x, at.y);
+            }
+        }
+        this.ctx.restore();
     }
     drawSprite(img, spritePos, sWidth, sHeight, at, width, height) {
         this.ctx.drawImage(img, spritePos.x, spritePos.y, sWidth, sHeight, at.x, at.y, width, height);
     }
+    deferredDrawings = [];
+    deferDrawing(cb) {
+        this.deferredDrawings.push(cb);
+    }
+    drawDeferred() {
+        while(this.deferredDrawings.length){
+            this.deferredDrawings.pop()?.();
+        }
+    }
     setStyle(style) {
         const ctx = this.ctx;
-        ctx.fillStyle = style?.color || style?.fillColor || 'black';
-        ctx.strokeStyle = style?.color || style?.strokeColor || 'black';
+        ctx.fillStyle = style?.color || style?.fillColor || "black";
+        ctx.strokeStyle = style?.color || style?.strokeColor || "black";
         ctx.lineWidth = style?.weight || 1;
+        ctx.textAlign = style?.textAlign || ctx.textAlign;
+        ctx.textBaseline = style?.textBaseline || ctx.textBaseline;
+    }
+    fillText(text, pos, maxWidth, style) {
+        this.setStyle(style);
+        this.ctx.fillText(text, pos.x, pos.y, maxWidth);
+    }
+    strokeText(text, pos, maxWidth, style) {
+        this.setStyle(style);
+        this.ctx.strokeText(text, pos.x, pos.y, maxWidth);
+    }
+    clearRect(at, width, height) {
+        this.ctx.clearRect(at.x, at.y, width, height);
     }
     mouseX = 0;
     mouseY = 0;
     registerDraggable(point, radius, style) {
         if (this.draggables.find((d)=>d.point === point)) return;
-        const id = this.addUIElement('circle', point, radius, {
-            fillColor: '#5533ff50',
-            strokeColor: '#5533ff50'
+        const id = this.addUIElement("circle", point, radius, {
+            fillColor: "#5533ff50",
+            strokeColor: "#5533ff50"
         });
         this.draggables.push({
             point,
@@ -452,7 +497,7 @@ class Doodler {
     unregisterClickable(cb) {
         this.clickables = this.clickables.filter((c)=>c.onClick !== cb);
     }
-    addDragEvents({ onDragEnd , onDragStart , onDrag , point  }) {
+    addDragEvents({ onDragEnd, onDragStart, onDrag, point }) {
         const d = this.draggables.find((d)=>d.point === point);
         if (d) {
             d.onDragEnd = onDragEnd;
@@ -549,34 +594,34 @@ class ZoomableDoodler extends Doodler {
         y: 0
     };
     maxScale = 4;
-    constructor(options){
-        super(options);
-        this._canvas.addEventListener('wheel', (e)=>{
+    constructor(options, postInit){
+        super(options, postInit);
+        this._canvas.addEventListener("wheel", (e)=>{
             this.scaleAtMouse(e.deltaY < 0 ? 1.1 : .9);
             if (this.scale === 1) {
                 this.origin.x = 0;
                 this.origin.y = 0;
             }
         });
-        this._canvas.addEventListener('dblclick', (e)=>{
+        this._canvas.addEventListener("dblclick", (e)=>{
             e.preventDefault();
             this.scale = 1;
             this.origin.x = 0;
             this.origin.y = 0;
             this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         });
-        this._canvas.addEventListener('mousedown', (e)=>{
+        this._canvas.addEventListener("mousedown", (e)=>{
             e.preventDefault();
             this.dragging = true;
         });
-        this._canvas.addEventListener('mouseup', (e)=>{
+        this._canvas.addEventListener("mouseup", (e)=>{
             e.preventDefault();
             this.dragging = false;
         });
-        this._canvas.addEventListener('mouseleave', (e)=>{
+        this._canvas.addEventListener("mouseleave", (e)=>{
             this.dragging = false;
         });
-        this._canvas.addEventListener('mousemove', (e)=>{
+        this._canvas.addEventListener("mousemove", (e)=>{
             const prev = this.mouse;
             this.mouse = {
                 x: e.offsetX,
@@ -584,7 +629,7 @@ class ZoomableDoodler extends Doodler {
             };
             if (this.dragging && !this.dragTarget) this.drag(prev);
         });
-        this._canvas.addEventListener('touchstart', (e)=>{
+        this._canvas.addEventListener("touchstart", (e)=>{
             e.preventDefault();
             if (e.touches.length === 1) {
                 const t1 = e.touches.item(0);
@@ -598,7 +643,7 @@ class ZoomableDoodler extends Doodler {
                 clearTimeout(this.touchTimer);
             }
         });
-        this._canvas.addEventListener('touchend', (e)=>{
+        this._canvas.addEventListener("touchend", (e)=>{
             if (e.touches.length !== 2) {
                 this.previousTouchLength = undefined;
             }
@@ -607,14 +652,14 @@ class ZoomableDoodler extends Doodler {
                     break;
                 case 0:
                     if (!this.zooming) {
-                        this.events.get('touchend')?.map((cb)=>cb(e));
+                        this.events.get("touchend")?.map((cb)=>cb(e));
                     }
                     break;
             }
             this.dragging = e.touches.length === 1;
             clearTimeout(this.touchTimer);
         });
-        this._canvas.addEventListener('touchmove', (e)=>{
+        this._canvas.addEventListener("touchmove", (e)=>{
             e.preventDefault();
             if (e.touches.length === 2) {
                 const t1 = e.touches.item(0);
@@ -639,18 +684,18 @@ class ZoomableDoodler extends Doodler {
             }
             if (e.touches.length === 1) {
                 this.dragging === true;
-                const t11 = e.touches.item(0);
-                if (t11) {
+                const t1 = e.touches.item(0);
+                if (t1) {
                     const prev = this.mouse;
                     this.mouse = this.getTouchOffset({
-                        x: t11.clientX,
-                        y: t11.clientY
+                        x: t1.clientX,
+                        y: t1.clientY
                     });
                     this.drag(prev);
                 }
             }
         });
-        this._canvas.addEventListener('touchstart', (e)=>{
+        this._canvas.addEventListener("touchstart", (e)=>{
             if (e.touches.length !== 1) return false;
             if (!this.hasDoubleTapped) {
                 this.hasDoubleTapped = true;
@@ -665,10 +710,12 @@ class ZoomableDoodler extends Doodler {
                 this.frameCounter = 0;
                 this.zoomDirection = 1;
             }
-            if (this.zoomDirection > 0) this.scaleAround = {
-                ...this.mouse
-            };
-            this.events.get('doubletap')?.map((cb)=>cb(e));
+            if (this.zoomDirection > 0) {
+                this.scaleAround = {
+                    ...this.mouse
+                };
+            }
+            this.events.get("doubletap")?.map((cb)=>cb(e));
         });
     }
     worldToScreen(x, y) {
@@ -721,7 +768,7 @@ class ZoomableDoodler extends Doodler {
         super.draw();
     }
     getTouchOffset(p) {
-        const { x , y  } = this._canvas.getBoundingClientRect();
+        const { x, y } = this._canvas.getBoundingClientRect();
         const offsetX = p.x - x;
         const offsetY = p.y - y;
         return {
@@ -736,7 +783,7 @@ class ZoomableDoodler extends Doodler {
             movementY: e.movementY / this.scale
         };
         super.onDrag(d);
-        const { x , y  } = this.screenToWorld(e.offsetX, e.offsetY);
+        const { x, y } = this.screenToWorld(e.offsetX, e.offsetY);
         this.mouseX = x;
         this.mouseY = y;
     }
@@ -770,46 +817,51 @@ class ZoomableDoodler extends Doodler {
         events.push(cb);
     }
 }
-const init = (opt, zoomable)=>{
-    if (window.doodler) throw 'Doodler has already been initialized in this window';
-    window.doodler = zoomable ? new ZoomableDoodler(opt) : new Doodler(opt);
+const init = (opt, zoomable, postInit)=>{
+    if (window.doodler) {
+        throw "Doodler has already been initialized in this window";
+    }
+    window.doodler = zoomable ? new ZoomableDoodler(opt, postInit) : new Doodler(opt, postInit);
     window.doodler.init();
 };
 init({
     width: 400,
     height: 400
-}, true);
+}, true, (ctx)=>{
+    ctx.imageSmoothingEnabled = false;
+});
 new Vector(100, 300);
 const v = new Vector(30, 30);
 doodler.registerDraggable(v, 20);
 const img = new Image();
-img.src = './EngineSprites.png';
+img.src = "./skeleton.png";
 img.hidden;
 document.body.append(img);
 const p = new Vector(200, 200);
 doodler.createLayer(()=>{
+    doodler.drawImageWithOutline(img, new Vector(60, 60));
     doodler.drawScaled(1.5, ()=>{
         doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
-            color: 'grey',
+            color: "grey",
             weight: 2
         });
         doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
-            color: 'grey',
+            color: "grey",
             weight: 2
         });
         doodler.line(p, p.copy().add(0, 12), {
-            color: 'brown',
+            color: "brown",
             weight: 4
         });
         doodler.line(p, p.copy().add(0, -12), {
-            color: 'brown',
+            color: "brown",
             weight: 4
         });
     });
 });
-document.addEventListener('keyup', (e)=>{
+document.addEventListener("keyup", (e)=>{
     e.preventDefault();
-    if (e.key === ' ') {
+    if (e.key === " ") {
         doodler.unregisterDraggable(v);
     }
 });

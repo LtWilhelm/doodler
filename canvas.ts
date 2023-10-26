@@ -222,6 +222,48 @@ export class Doodler {
       ? this.ctx.drawImage(img, at.x, at.y, w, h)
       : this.ctx.drawImage(img, at.x, at.y);
   }
+
+  drawImageWithOutline(img: HTMLImageElement, at: Vector, style?: IStyle): void;
+  drawImageWithOutline(
+    img: HTMLImageElement,
+    at: Vector,
+    w: number,
+    h: number,
+    style?: IStyle,
+  ): void;
+  drawImageWithOutline(
+    img: HTMLImageElement,
+    at: Vector,
+    w?: number | IStyle,
+    h?: number,
+    style?: IStyle,
+  ) {
+    this.ctx.save();
+    const s = (typeof w === "number" || !w ? style?.weight : w.weight) || 1; // thickness scale
+
+    this.ctx.shadowColor =
+      (typeof w === "number" || !w
+        ? style?.color || style?.fillColor
+        : w.color || w.strokeColor) || "red";
+    this.ctx.shadowBlur = 0;
+
+    // X offset loop
+    for (let x = -s; x <= s; x++) {
+      // Y offset loop
+      for (let y = -s; y <= s; y++) {
+        // Set shadow offset
+        this.ctx.shadowOffsetX = x;
+        this.ctx.shadowOffsetY = y;
+
+        // Draw image with shadow
+        typeof w === "number" && h
+          ? this.ctx.drawImage(img, at.x, at.y, w, h)
+          : this.ctx.drawImage(img, at.x, at.y);
+      }
+    }
+    this.ctx.restore();
+  }
+
   drawSprite(
     img: HTMLImageElement,
     spritePos: Vector,

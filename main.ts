@@ -1,25 +1,31 @@
 /// <reference types="./global.d.ts" />
 
-import { Vector, initializeDoodler } from './mod.ts'
+import { initializeDoodler, Vector } from "./mod.ts";
 
-initializeDoodler({
-  width: 400,
-  height: 400
-}, true);
+initializeDoodler(
+  {
+    width: 400,
+    height: 400,
+  },
+  true,
+  (ctx) => {
+    ctx.imageSmoothingEnabled = false;
+  },
+);
 
 const movingVector = new Vector(100, 300);
 let angleMultiplier = 0;
 const v = new Vector(30, 30);
-doodler.registerDraggable(v, 20)
+doodler.registerDraggable(v, 20);
 const img = new Image();
-img.src = './EngineSprites.png'
-img.hidden
-document.body.append(img)
+img.src = "./skeleton.png";
+img.hidden;
+document.body.append(img);
 
 const p = new Vector(200, 200);
 
 doodler.createLayer(() => {
-
+  doodler.drawImageWithOutline(img, new Vector(60, 60));
   // doodler.line(new Vector(100, 100), new Vector(200, 200))
   // doodler.dot(new Vector(300, 300))
   // doodler.fillCircle(movingVector, 6, { color: 'red' });
@@ -35,21 +41,28 @@ doodler.createLayer(() => {
   //   doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(160, 300), 80, 20)
   // })
 
-
   // movingVector.set((movingVector.x + 1) % 400, movingVector.y);
   // angleMultiplier += .001;
 
   // doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(100, 300), 80, 20)
 
-  doodler.drawScaled(1.5, () => {doodler.line(p.copy().add(-8,10), p.copy().add(8,10), {color: 'grey', weight: 2})
-  doodler.line(p.copy().add(-8,-10), p.copy().add(8,-10), {color: 'grey', weight: 2})
-  doodler.line(p, p.copy().add(0,12), {color: 'brown', weight: 4})
-  doodler.line(p, p.copy().add(0,-12), {color: 'brown', weight: 4})})
+  doodler.drawScaled(1.5, () => {
+    doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
+      color: "grey",
+      weight: 2,
+    });
+    doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
+      color: "grey",
+      weight: 2,
+    });
+    doodler.line(p, p.copy().add(0, 12), { color: "brown", weight: 4 });
+    doodler.line(p, p.copy().add(0, -12), { color: "brown", weight: 4 });
+  });
 });
 
-document.addEventListener('keyup', e => {
+document.addEventListener("keyup", (e) => {
   e.preventDefault();
-  if (e.key === ' ') {
+  if (e.key === " ") {
     doodler.unregisterDraggable(v);
   }
-})
+});

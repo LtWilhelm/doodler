@@ -20,5 +20,6 @@
   },
   "peacock.remoteColor": "aa11aa",
   "deno.enable": true,
-  "deno.unstable": true
+  "deno.unstable": true,
+  "liveServer.settings.port": 5501
 }
