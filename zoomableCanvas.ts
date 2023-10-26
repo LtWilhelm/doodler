@@ -1,23 +1,23 @@
 import { Doodler, IDoodlerOptions } from "./canvas.ts";
 import { OriginVector, Point } from "./geometry/vector.ts";
+import { postInit } from "./postInit.ts";
 import { easeInOut } from "./timing/EaseInOut.ts";
 import { map } from "./timing/Map.ts";
 
 type TouchEventCallback = (e: TouchEvent) => void;
 
 export class ZoomableDoodler extends Doodler {
-
   private scale = 1;
   dragging = false;
   private origin: Point = {
     x: 0,
-    y: 0
-  }
+    y: 0,
+  };
 
   mouse = {
     x: 0,
-    y: 0
-  }
+    y: 0,
+  };
 
   private previousTouchLength?: number;
 
@@ -28,53 +28,53 @@ export class ZoomableDoodler extends Doodler {
   scaleAround: Point = { x: 0, y: 0 };
 
   maxScale = 4;
-  
-  constructor(options: IDoodlerOptions) {
-    super(options)
 
-    this._canvas.addEventListener('wheel', (e) => {
+  constructor(options: IDoodlerOptions, postInit?: postInit) {
+    super(options, postInit);
+
+    this._canvas.addEventListener("wheel", (e) => {
       this.scaleAtMouse(e.deltaY < 0 ? 1.1 : .9);
       if (this.scale === 1) {
-        this.origin.x = 0
-        this.origin.y = 0
+        this.origin.x = 0;
+        this.origin.y = 0;
       }
-    })
-    this._canvas.addEventListener('dblclick', (e) => {
+    });
+    this._canvas.addEventListener("dblclick", (e) => {
       e.preventDefault();
       this.scale = 1;
       this.origin.x = 0;
       this.origin.y = 0;
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    })
-    this._canvas.addEventListener('mousedown', (e) => {
+    });
+    this._canvas.addEventListener("mousedown", (e) => {
       e.preventDefault();
       this.dragging = true;
-    })
-    this._canvas.addEventListener('mouseup', (e) => {
+    });
+    this._canvas.addEventListener("mouseup", (e) => {
       e.preventDefault();
       this.dragging = false;
-    })
-    this._canvas.addEventListener('mouseleave', (e) => {
+    });
+    this._canvas.addEventListener("mouseleave", (e) => {
       this.dragging = false;
-    })
-    this._canvas.addEventListener('mousemove', (e) => {
+    });
+    this._canvas.addEventListener("mousemove", (e) => {
       const prev = this.mouse;
       this.mouse = {
         x: e.offsetX,
-        y: e.offsetY
-      }
+        y: e.offsetY,
+      };
       if (this.dragging && !this.dragTarget) this.drag(prev);
-    })
+    });
 
-    this._canvas.addEventListener('touchstart', (e) => {
+    this._canvas.addEventListener("touchstart", (e) => {
       e.preventDefault();
       if (e.touches.length === 1) {
         const t1 = e.touches.item(0);
         if (t1) {
           this.mouse = this.getTouchOffset({
             x: t1.clientX,
-            y: t1.clientY
-          })
+            y: t1.clientY,
+          });
         }
         // this.touchTimer = setTimeout(() => {
         //   this.dragging = true;
@@ -83,7 +83,7 @@ export class ZoomableDoodler extends Doodler {
         clearTimeout(this.touchTimer);
       }
     });
-    this._canvas.addEventListener('touchend', (e) => {
+    this._canvas.addEventListener("touchend", (e) => {
       if (e.touches.length !== 2) {
         this.previousTouchLength = undefined;
       }
@@ -93,7 +93,7 @@ export class ZoomableDoodler extends Doodler {
           break;
         case 0:
           if (!this.zooming) {
-            this.events.get('touchend')?.map(cb => cb(e));
+            this.events.get("touchend")?.map((cb) => cb(e));
           }
           break;
       }
@@ -101,7 +101,7 @@ export class ZoomableDoodler extends Doodler {
       this.dragging = e.touches.length === 1;
       clearTimeout(this.touchTimer);
     });
-    this._canvas.addEventListener('touchmove', (e) => {
+    this._canvas.addEventListener("touchmove", (e) => {
       e.preventDefault();
 
       if (e.touches.length === 2) {
@@ -112,18 +112,18 @@ export class ZoomableDoodler extends Doodler {
           const vect = OriginVector.from(
             this.getTouchOffset({
               x: t1.clientX,
-              y: t1.clientY
+              y: t1.clientY,
             }),
             {
               x: t2.clientX,
-              y: t2.clientY
+              y: t2.clientY,
             },
-          )
+          );
 
           if (this.previousTouchLength) {
             const diff = this.previousTouchLength - vect.mag();
             this.scaleAt(vect.halfwayPoint, diff < 0 ? 1.01 : .99);
-            this.scaleAround = { ...vect.halfwayPoint }
+            this.scaleAround = { ...vect.halfwayPoint };
           }
           this.previousTouchLength = vect.mag();
         }
@@ -136,14 +136,14 @@ export class ZoomableDoodler extends Doodler {
           const prev = this.mouse;
           this.mouse = this.getTouchOffset({
             x: t1.clientX,
-            y: t1.clientY
-          })
+            y: t1.clientY,
+          });
           this.drag(prev);
         }
       }
     });
 
-    this._canvas.addEventListener('touchstart', (e) => {
+    this._canvas.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return false;
 
       if (!this.hasDoubleTapped) {
@@ -166,11 +166,12 @@ export class ZoomableDoodler extends Doodler {
         this.frameCounter = 0;
         this.zoomDirection = 1;
       }
-      if (this.zoomDirection > 0)
+      if (this.zoomDirection > 0) {
         this.scaleAround = { ...this.mouse };
+      }
 
-      this.events.get('doubletap')?.map(cb => cb(e));
-    })
+      this.events.get("doubletap")?.map((cb) => cb(e));
+    });
   }
 
   worldToScreen(x: number, y: number) {
@@ -187,7 +188,7 @@ export class ZoomableDoodler extends Doodler {
     if (this.scale === this.maxScale && scaleBy > 1) return;
     this.scaleAt({
       x: this.mouse.x,
-      y: this.mouse.y
+      y: this.mouse.y,
     }, scaleBy);
   }
   scaleAt(p: Point, scaleBy: number) {
@@ -206,15 +207,34 @@ export class ZoomableDoodler extends Doodler {
     }
   }
   constrainOrigin() {
-    this.origin.x = Math.min(Math.max(this.origin.x, (-this._canvas.width * this.scale) + this._canvas.width), 0);
-    this.origin.y = Math.min(Math.max(this.origin.y, (-this._canvas.height * this.scale) + this._canvas.height), 0);
+    this.origin.x = Math.min(
+      Math.max(
+        this.origin.x,
+        (-this._canvas.width * this.scale) + this._canvas.width,
+      ),
+      0,
+    );
+    this.origin.y = Math.min(
+      Math.max(
+        this.origin.y,
+        (-this._canvas.height * this.scale) + this._canvas.height,
+      ),
+      0,
+    );
   }
 
   draw() {
-    this.ctx.setTransform(this.scale, 0, 0, this.scale, this.origin.x, this.origin.y)
+    this.ctx.setTransform(
+      this.scale,
+      0,
+      0,
+      this.scale,
+      this.origin.x,
+      this.origin.y,
+    );
     this.animateZoom();
     this.ctx.fillStyle = this.bg;
-    this.ctx.fillRect(0, 0, this.width/this.scale, this.height/this.scale);
+    this.ctx.fillRect(0, 0, this.width / this.scale, this.height / this.scale);
     super.draw();
   }
 
@@ -225,18 +245,18 @@ export class ZoomableDoodler extends Doodler {
 
     return {
       x: offsetX,
-      y: offsetY
-    }
+      y: offsetY,
+    };
   }
 
   onDrag(e: MouseEvent): void {
     const d = {
       ...e,
-      movementX: e.movementX/this.scale,
-      movementY: e.movementY/this.scale
-    }
+      movementX: e.movementX / this.scale,
+      movementY: e.movementY / this.scale,
+    };
     super.onDrag(d);
-    const {x, y} = this.screenToWorld(e.offsetX, e.offsetY);
+    const { x, y } = this.screenToWorld(e.offsetX, e.offsetY);
     this.mouseX = x;
     this.mouseY = y;
   }
@@ -247,13 +267,15 @@ export class ZoomableDoodler extends Doodler {
     if (this.frameCounter < 60) {
       const frame = easeInOut(map(this.frameCounter, 0, 59, 0, 1));
       switch (this.zoomDirection) {
-        case 1: {
-          this.scale = map(frame, 0, 1, 1, this.maxScale);
-        }
+        case 1:
+          {
+            this.scale = map(frame, 0, 1, 1, this.maxScale);
+          }
           break;
-        case -1: {
-          this.scale = map(frame, 0, 1, this.maxScale, 1);
-        }
+        case -1:
+          {
+            this.scale = map(frame, 0, 1, this.maxScale, 1);
+          }
           break;
       }
       this.origin.x = this.scaleAround.x - (this.scaleAround.x * this.scale);
@@ -265,7 +287,10 @@ export class ZoomableDoodler extends Doodler {
   }
 
   events: Map<string, TouchEventCallback[]> = new Map();
-  registerEvent(eventName: 'touchend' | 'touchstart' | 'touchmove' | 'doubletap', cb: TouchEventCallback) {
+  registerEvent(
+    eventName: "touchend" | "touchstart" | "touchmove" | "doubletap",
+    cb: TouchEventCallback,
+  ) {
     let events = this.events.get(eventName);
     if (!events) events = this.events.set(eventName, []).get(eventName)!;
     events.push(cb);

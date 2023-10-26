@@ -2,13 +2,20 @@
 
 import { Constants } from "./geometry/constants.ts";
 import { Vector } from "./geometry/vector.ts";
+import { postInit } from "./postInit.ts";
 import { ZoomableDoodler } from "./zoomableCanvas.ts";
 
-export const init = (opt: IDoodlerOptions, zoomable: boolean) => {
+export const init = (
+  opt: IDoodlerOptions,
+  zoomable: boolean,
+  postInit?: postInit,
+) => {
   if (window.doodler) {
     throw "Doodler has already been initialized in this window";
   }
-  window.doodler = zoomable ? new ZoomableDoodler(opt) : new Doodler(opt);
+  window.doodler = zoomable
+    ? new ZoomableDoodler(opt, postInit)
+    : new Doodler(opt, postInit);
   window.doodler.init();
 };
 
@@ -49,7 +56,7 @@ export class Doodler {
     canvas,
     bg,
     framerate,
-  }: IDoodlerOptions) {
+  }: IDoodlerOptions, postInit?: postInit) {
     if (!canvas) {
       canvas = document.createElement("canvas");
       document.body.append(canvas);
@@ -66,6 +73,8 @@ export class Doodler {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw "Unable to initialize Doodler: Canvas context not found";
     this.ctx = ctx;
+
+    postInit?.(this.ctx);
   }
 
   init() {
