@@ -197,6 +197,13 @@ export class ZoomableDoodler extends Doodler {
     this.origin.y = p.y - (p.y - this.origin.y) * scaleBy;
     this.constrainOrigin();
   }
+  moveOrigin(motion: Point) {
+    if (this.scale > 1) {
+      this.origin.x += motion.x;
+      this.origin.y += motion.y;
+      this.constrainOrigin();
+    }
+  }
   drag(prev: Point) {
     if (this.scale > 1) {
       const xOffset = this.mouse.x - prev.x;

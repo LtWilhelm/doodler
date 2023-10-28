@@ -747,6 +747,13 @@ class ZoomableDoodler extends Doodler {
         this.origin.y = p.y - (p.y - this.origin.y) * scaleBy;
         this.constrainOrigin();
     }
+    moveOrigin(motion) {
+        if (this.scale > 1) {
+            this.origin.x += motion.x;
+            this.origin.y += motion.y;
+            this.constrainOrigin();
+        }
+    }
     drag(prev) {
         if (this.scale > 1) {
             const xOffset = this.mouse.x - prev.x;
@@ -839,25 +846,31 @@ img.hidden;
 document.body.append(img);
 const p = new Vector(200, 200);
 doodler.createLayer(()=>{
-    doodler.drawImageWithOutline(img, new Vector(60, 60));
-    doodler.drawScaled(1.5, ()=>{
-        doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
-            color: "grey",
-            weight: 2
+    const [gamepad] = navigator.getGamepads();
+    if (gamepad) {
+        const leftX = gamepad.axes[0];
+        const leftY = gamepad.axes[1];
+        p.add(Math.min(Math.max(leftX - 0.04, 0), leftX + 0.04), Math.min(Math.max(leftY - 0.04, 0), leftY + 0.04));
+        const rigthX = gamepad.axes[2];
+        const rigthY = gamepad.axes[3];
+        doodler.moveOrigin({
+            x: -rigthX * 5,
+            y: -rigthY * 5
         });
-        doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
-            color: "grey",
-            weight: 2
-        });
-        doodler.line(p, p.copy().add(0, 12), {
-            color: "brown",
-            weight: 4
-        });
-        doodler.line(p, p.copy().add(0, -12), {
-            color: "brown",
-            weight: 4
-        });
-    });
+        if (gamepad.buttons[7].value) {
+            doodler.scaleAt({
+                x: 200,
+                y: 200
+            }, 1 + gamepad.buttons[7].value / 5);
+        }
+        if (gamepad.buttons[6].value) {
+            doodler.scaleAt({
+                x: 200,
+                y: 200
+            }, 1 - gamepad.buttons[6].value / 5);
+        }
+    }
+    doodler.drawImageWithOutline(img, p);
 });
 document.addEventListener("keyup", (e)=>{
     e.preventDefault();

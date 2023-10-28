@@ -1,6 +1,7 @@
 /// <reference types="./global.d.ts" />
 
 import { initializeDoodler, Vector } from "./mod.ts";
+import { ZoomableDoodler } from "./zoomableCanvas.ts";
 
 initializeDoodler(
   {
@@ -25,7 +26,34 @@ document.body.append(img);
 const p = new Vector(200, 200);
 
 doodler.createLayer(() => {
-  doodler.drawImageWithOutline(img, new Vector(60, 60));
+  const [gamepad] = navigator.getGamepads();
+  const deadzone = 0.04;
+  if (gamepad) {
+    const leftX = gamepad.axes[0];
+    const leftY = gamepad.axes[1];
+    p.add(
+      Math.min(Math.max(leftX - deadzone, 0), leftX + deadzone),
+      Math.min(Math.max(leftY - deadzone, 0), leftY + deadzone),
+    );
+
+    const rigthX = gamepad.axes[2];
+    const rigthY = gamepad.axes[3];
+    (doodler as ZoomableDoodler).moveOrigin({ x: -rigthX * 5, y: -rigthY * 5 });
+
+    if (gamepad.buttons[7].value) {
+      (doodler as ZoomableDoodler).scaleAt(
+        { x: 200, y: 200 },
+        1 + (gamepad.buttons[7].value / 5),
+      );
+    }
+    if (gamepad.buttons[6].value) {
+      (doodler as ZoomableDoodler).scaleAt(
+        { x: 200, y: 200 },
+        1 - (gamepad.buttons[6].value / 5),
+      );
+    }
+  }
+  doodler.drawImageWithOutline(img, p);
   // doodler.line(new Vector(100, 100), new Vector(200, 200))
   // doodler.dot(new Vector(300, 300))
   // doodler.fillCircle(movingVector, 6, { color: 'red' });
@@ -46,18 +74,18 @@ doodler.createLayer(() => {
 
   // doodler.drawSprite(img, new Vector(0, 40), 80, 20, new Vector(100, 300), 80, 20)
 
-  doodler.drawScaled(1.5, () => {
-    doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
-      color: "grey",
-      weight: 2,
-    });
-    doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
-      color: "grey",
-      weight: 2,
-    });
-    doodler.line(p, p.copy().add(0, 12), { color: "brown", weight: 4 });
-    doodler.line(p, p.copy().add(0, -12), { color: "brown", weight: 4 });
-  });
+  // doodler.drawScaled(1.5, () => {
+  //   doodler.line(p.copy().add(-8, 10), p.copy().add(8, 10), {
+  //     color: "grey",
+  //     weight: 2,
+  //   });
+  //   doodler.line(p.copy().add(-8, -10), p.copy().add(8, -10), {
+  //     color: "grey",
+  //     weight: 2,
+  //   });
+  //   doodler.line(p, p.copy().add(0, 12), { color: "brown", weight: 4 });
+  //   doodler.line(p, p.copy().add(0, -12), { color: "brown", weight: 4 });
+  // });
 });
 
 document.addEventListener("keyup", (e) => {
